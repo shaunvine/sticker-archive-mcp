@@ -1,6 +1,6 @@
 """MCP server for the Burning Man Sticker Archive"""
 
-from mcp.server.fastmcp import FastMCP
+from fastmcp import FastMCP
 
 import sticker_tools
 

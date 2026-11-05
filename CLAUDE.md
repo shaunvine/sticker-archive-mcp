@@ -12,7 +12,7 @@ I'm learning MCP and Python (junior level). Teach as you go.
 - Setup, config and boilerplate: you may write these, but explain each line.
 - When I ask for a review, don't change files. Explain any problems instead.
 - Make only the change I ask for, one small change at a time. If you think something else should change, suggest it and wait for my OK.
-- Use the course's MCP version: mcp below 2, with `from mcp.server.fastmcp import FastMCP`.
+- Use the standalone fastmcp package, version 3 (`from fastmcp import FastMCP`), with mcp below 2.
 - Keep tools in sticker_tools.py and the server in server.py.
 - At the end of each stage, remind me to update README.md and commit before moving on.
 
