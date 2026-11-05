@@ -43,7 +43,6 @@ I run burningmanstickers.org and a weekly Instagram series spotlighting individu
 
 ### Coming next
 
-- **Live data:** read straight from Contentful, so new stickers appear without re-running the export.
 - **Online version:** hosted with a public web address, so anyone with Claude can try it.
 - **Accessibility audit:** `missing_alt_text` lists stickers on the website with missing or weak image alt text.
 - **Accessibility checker:** `check_accessibility` reviews an Instagram caption and alt text (missing alt text, hashtags without capitals such as #BurningMan, emoji overuse).
@@ -64,12 +63,12 @@ Contentful (CMS)  ──►  export_stickers.py  ──►  data/stickers.json
                                     Claude Desktop / Claude Code (MCP hosts)
 ```
 
-| File                 | Role                                                                                                                                                                |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `export_stickers.py` | Fetches every `bmSticker` entry from Contentful's **read-only** Delivery API, flattens rich text and image links, and saves a tidy snapshot to `data/stickers.json` |
-| `sticker_tools.py`   | The real logic: `load_stickers`, `search_stickers` and `sticker_details`. Plain functions that can be tested in a notebook without any MCP involved                 |
-| `server.py`          | Thin MCP wrappers. `@mcp.tool()` turns each function into a tool, and the docstrings and type hints become the descriptions and input rules Claude sees             |
-| `explore.ipynb`      | The notebook I used to explore the data and test each function                                                                                                      |
+| File                 | Role                                                                                                                                                                                                                                                                     |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --- |
+| `export_stickers.py` | Fetches every `bmSticker` entry from Contentful's **read-only** Delivery API, flattens rich text and image links, and saves a tidy snapshot to `data/stickers.json`                                                                                                      |
+| `sticker_tools.py`   | The real logic: `load_stickers`, `search_stickers` and `sticker_details`. `load_stickers` reads **live from Contentful**, remembers the result for 10 minutes so it doesn't ask on every question, and falls back to `data/stickers.json` if Contentful can't be reached |     |
+| `server.py`          | Thin MCP wrappers. `@mcp.tool()` turns each function into a tool, and the docstrings and type hints become the descriptions and input rules Claude sees                                                                                                                  |
+| `explore.ipynb`      | The notebook I used to explore the data and test each function                                                                                                                                                                                                           |
 
 Keeping the logic (`sticker_tools.py`) separate from the server (`server.py`) means that when something breaks, I can tell whether it's my code or the MCP plumbing.
 
@@ -85,7 +84,7 @@ cd sticker-archive-mcp
 uv sync
 ```
 
-The sticker data (`data/stickers.json`) is included, so **no Contentful account is needed** to try it.
+The sticker data (`data/stickers.json`) is included, so **no Contentful account is needed** to try it. Without Contentful keys, the server automatically uses this file. With keys in `.env`, it reads live data.
 
 **Test it in the MCP Inspector:**
 
@@ -142,6 +141,8 @@ Part of the work was **supervising the AI**. Some examples:
 - **Docstrings are the interface.** Claude never sees my code, only each tool's name, description and inputs. Clear descriptions are what make it choose the right tool.
 - **MCP servers are reusable.** I wrote the server once, and Claude Code, Claude Desktop and the MCP Inspector all use it unchanged.
 - **Setup is real work.** Working around a package with no ready-made version for Intel Macs, choosing the right project layout in `uv`, and editing an app's config file safely (quit the app, back up, validate the JSON) were all part of getting it running.
+- **A test only proves something if it would fail when the feature is broken.** Checking that the corrected data appeared didn't prove the server was live, because the saved file already had the correction. A timing test (0.2 s live versus 0.0001 s remembered) and a deliberately broken key (to force the fallback) did.
+- **Code that runs inside a server needs different habits from a script.** It must never `print()` (that breaks stdio) or `sys.exit()` (that stops the server), so the reusable function raises errors for the server to catch.
 
 ---
 

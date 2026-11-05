@@ -4,11 +4,40 @@ import json
 from functools import lru_cache
 from pathlib import Path
 
+import time
+from export_stickers import fetch_stickers
+
 DATA_FILE = Path(__file__).parent / "data" / "stickers.json"
+
+CACHE_SECONDS = 10 * 60 # remember live data for 10 minutes
+_cache = {"stickers": None, "fetched_": 0.0}
+
+def load_stickers():
+    """Return all stickers: live from Contentful, remembered for 10 minutes.
+    Falls back to data/stickers.json if Contentful can't be reached."""
+    now = time.time()
+
+    # 1. Recently fetched? Use the remembered copy.
+    if _cache["stickers"] is not None and now - _cache["fetched_at"] < CACHE_SECONDS:
+        return _cache["stickers"]
+
+    # 2. Otherwise, try Contentful.
+    try:
+        stickers = fetch_stickers()
+    except Exception:
+        # 3. Contentful failed: use the last copy, or the file.
+        if _cache["stickers"] is not None:
+            return _cache["stickers"]
+        return _load_from_file()
+
+    # 4. It worked: remember the stickers and the time, then return them.
+    _cache["stickers"] = stickers
+    _cache["fetched_at"] = now
+    return stickers
 
 
 @lru_cache(maxsize=1)
-def load_stickers():
+def _load_from_file():
     """Read the sticker archive once and return it as a list of dictionaries."""
     if not DATA_FILE.exists():
         raise FileNotFoundError(
