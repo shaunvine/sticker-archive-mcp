@@ -23,7 +23,7 @@ def load_config():
     ]
     missing = [key for key in keys if not os.getenv(key)]
     if missing:
-        sys.exit(f"Missing in .env: {', '.join(missing)}")
+        raise RuntimeError(f"Missing in .env: {', '.join(missing)}")
     space, environment, token = (os.environ[key] for key in keys)
     url = (
         f"https://cdn.contentful.com/spaces/{space}"
@@ -48,7 +48,9 @@ def fetch_all(url, headers):
         }
         response = requests.get(url, headers=headers, params=params, timeout=30)
         if not response.ok:
-            sys.exit(f"Contentful request failed: HTTP {response.status_code}")
+            raise RuntimeError(
+                f"Contentful request failed: HTTP {response.status_code}"
+            )
         data = response.json()
         items = data.get("items", [])
         if not items:
@@ -116,16 +118,25 @@ def simplify(entry, assets):
     return {key: blank_to_none(value) for key, value in record.items()}, used_fallback
 
 
-def main():
+def fetch_stickers():
+    """Fetch every sticker from Contentful and return the simplified records.
+
+    Safe to call from the MCP server: it never prints and never exits.
+    It raises RuntimeError with a clear message if something goes wrong.
+    """
     url, headers = load_config()
     entries, assets = fetch_all(url, headers)
+    return [simplify(entry, assets)[0] for entry in entries]
 
-    stickers = []
-    fallback_count = 0
-    for entry in entries:
-        record, used_fallback = simplify(entry, assets)
-        stickers.append(record)
-        fallback_count += used_fallback
+
+def main():
+    try:
+        stickers = fetch_stickers()
+    except RuntimeError as error:
+        sys.exit(str(error))
+
+    # A sticker with no slug has slug None, and simplify() gave it its sys.id.
+    fallback_count = sum(1 for sticker in stickers if sticker["slug"] is None)
 
     OUTPUT_PATH.parent.mkdir(exist_ok=True)
     with OUTPUT_PATH.open("w", encoding="utf-8") as f:
