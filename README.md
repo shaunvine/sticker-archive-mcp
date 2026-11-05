@@ -79,7 +79,7 @@ Keeping the logic (`sticker_tools.py`) separate from the server (`server.py`) me
 **You'll need:** macOS or Linux, Python 3.14, [uv](https://docs.astral.sh/uv/) and, for the MCP Inspector only, Node.js.
 
 ```bash
-git clone https://github.com/<your-github-username>/sticker-archive-mcp.git
+git clone https://github.com/shaunvine/sticker-archive-mcp.git
 cd sticker-archive-mcp
 uv sync
 ```
