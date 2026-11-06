@@ -5,7 +5,7 @@
 An [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server that lets Claude search the 396 stickers in my archive at [burningmanstickers.org](https://burningmanstickers.org), covering 1999 to 2026. Ask a question in plain English, and Claude decides which tool to use, calls it and answers from the real data.
 
 > 🎥 **Demo video:** _coming soon_
-> 🌐 **Try it live:** _coming soon (online version in progress)_
+> 🌐 **Hosted online:** deployed on Prefect Horizon (private). I'm happy to demo it live.
 
 ---
 
@@ -72,6 +72,8 @@ Contentful (CMS)  ──►  export_stickers.py  ──►  data/stickers.json
 
 Keeping the logic (`sticker_tools.py`) separate from the server (`server.py`) means that when something breaks, I can tell whether it's my code or the MCP plumbing.
 
+**Online:** the server is deployed from this GitHub repo to [Prefect Horizon](https://horizon.prefect.io), which rebuilds it on every push and serves it over Streamable HTTP. It's added to Claude as a custom connector, so it works on the web, desktop and phone.
+
 ---
 
 ## Run it yourself
@@ -119,6 +121,7 @@ claude mcp add sticker-archive -- uv --directory "$PWD" run server.py
 - **Secrets stay out of the code.** Keys live in `.env`, which is listed in `.gitignore` and has never been committed.
 - **The AI can't read the secrets either.** `.claude/settings.json` has a deny rule that stops Claude Code reading `.env`, and `CLAUDE.md` gives the same instruction in words.
 - **The live website is never touched.** This project never edits, commits to or pushes to the burningmanstickers.org repository.
+-  **Online, the token stays hidden too.** The Contentful delivery token is stored in Horizon's private environment settings, not in this repo, and the hosted server requires sign-in.
 
 ---
 
@@ -143,6 +146,8 @@ Part of the work was **supervising the AI**. Some examples:
 - **Setup is real work.** Working around a package with no ready-made version for Intel Macs, choosing the right project layout in `uv`, and editing an app's config file safely (quit the app, back up, validate the JSON) were all part of getting it running.
 - **A test only proves something if it would fail when the feature is broken.** Checking that the corrected data appeared didn't prove the server was live, because the saved file already had the correction. A timing test (0.2 s live versus 0.0001 s remembered) and a deliberately broken key (to force the fallback) did.
 - **Code that runs inside a server needs different habits from a script.** It must never `print()` (that breaks stdio) or `sys.exit()` (that stops the server), so the reusable function raises errors for the server to catch.
+-  **Check package requirements before adding one.** The newest `fastmcp` (4.x) needs `mcp` 2.3 or later, which would have clashed with this project's `mcp<2`, so I pinned `fastmcp` to 3.x.
+- **Hosting is a trade-off.** Making the server public needed a paid plan. A private deployment I can demo live met my goals, so I chose that over extra cost or complexity.
 
 ---
 
