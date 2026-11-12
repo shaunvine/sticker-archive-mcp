@@ -32,5 +32,21 @@ def sticker_details(sticker_id: str) -> str:
     """
     return sticker_tools.sticker_details(sticker_id)
 
+
+@mcp.tool()
+def alt_text_audit(limit: int = 20) -> str:
+    """Audit the alt text of every sticker image on burningmanstickers.org
+    for accessibility problems.
+
+    Checks for alt text that is missing, under 20 characters, the same as the
+    title, starts with "image of", is over 250 characters, or contains a file name.
+
+    Use this when the user asks:
+    - Do the images have meaningful alt text for screen readers?
+    - Do the images have alt text?
+    - How accessible are the sticker images?
+    """
+    return sticker_tools.alt_text_audit(limit=limit)
+    
 if __name__ == "__main__":
-    mcp.run(transport="stdio")
+        mcp.run(transport="stdio")

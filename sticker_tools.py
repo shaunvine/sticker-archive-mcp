@@ -10,7 +10,7 @@ from export_stickers import fetch_stickers
 DATA_FILE = Path(__file__).parent / "data" / "stickers.json"
 
 CACHE_SECONDS = 10 * 60 # remember live data for 10 minutes
-_cache = {"stickers": None, "fetched_": 0.0}
+_cache = {"stickers": None, "fetched_at": 0.0}
 
 def load_stickers():
     """Return all stickers: live from Contentful, remembered for 10 minutes.
@@ -108,6 +108,92 @@ def search_stickers(year=None, camp=None, keyword=None, limit=10):
     output = json.dumps(summaries, indent=2)
     if len(results) > limit:
         output = f"Showing {limit} of {len(results)} matches:\n{output}"
+    return output
+
+
+def _has_file_name(text):
+    """Return True if any word in the text ends with an image file extension."""
+    extensions = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg")
+
+    # split() breaks the text into words at spaces.
+    for word in text.lower().split():
+        # Remove punctuation from the end of the word, e.g. "photo.png," -> "photo.png"
+        word = word.rstrip(",.;:!?\"'()")
+        for extension in extensions:
+            if word.endswith(extension):
+                return True
+
+    return False
+
+
+def alt_text_audit(limit=20):
+    """Check every sticker's imageAlt and list the ones that look weak."""
+    # Check limit the same way search_stickers does.
+    try:
+        limit = int(limit)
+    except (TypeError, ValueError):
+        return "limit must be a whole number."
+    if limit < 1:
+        return "limit must be at least 1."
+
+    stickers = load_stickers()
+    flagged = []
+
+    for sticker in stickers:
+        # "or ''" turns a missing value (None) into an empty string.
+        alt = (sticker.get("imageAlt") or "").strip()
+        title = (sticker.get("title") or "").strip()
+        alt_lower = alt.lower()
+        title_lower = title.lower()
+
+        reasons = []
+
+        # Rule 1: missing or blank
+        if alt == "":
+            reasons.append("Alt text is missing or blank.")
+
+        # Rule 2: too short (blank is already covered by rule 1)
+        if alt != "" and len(alt) < 20:
+            reasons.append("Alt text is under 20 characters.")
+
+        # Rule 3: same as the title, ignoring capitals and outer spaces
+        if alt != "" and alt_lower == title_lower:
+            reasons.append("Alt text is the same as the title.")
+
+        # Rule 4: starts with a phrase screen readers already announce
+        if alt_lower.startswith(("image of", "picture of", "photo of")):
+            reasons.append(
+                "Alt text starts with 'image of', 'picture of' or 'photo of'."
+            )
+
+        # Rule 5: too long
+        if len(alt) > 250:
+            reasons.append("Alt text is over 250 characters.")
+
+        # Rule 6: looks like it contains a file name
+        if _has_file_name(alt):
+            reasons.append("Alt text contains a file name.")
+
+        # Keep the sticker only if it has at least one reason.
+        if len(reasons) > 0:
+            flagged.append(
+                {
+                    "id": sticker.get("id"),
+                    "title": sticker.get("title"),
+                    "year": sticker.get("year"),
+                    "imageAlt": sticker.get("imageAlt"),
+                    "reasons": reasons,
+                }
+            )
+
+    total = len(stickers)
+    if len(flagged) == 0:
+        return f"All {total} stickers passed the alt-text audit."
+
+    output = f"{len(flagged)} of {total} stickers need attention"
+    if len(flagged) > limit:
+        output += f"\nShowing {limit} of {len(flagged)}"
+    output += "\n" + json.dumps(flagged[:limit], indent=2)
     return output
 
 
